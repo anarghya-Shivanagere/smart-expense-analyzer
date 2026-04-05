@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This app uses a FastAPI backend, a custom static frontend, local file-based artifacts, and SQLite by default.
+This app uses a FastAPI backend, a custom static frontend, and a database layer that supports either SQLite or Postgres.
 
 ## Quick Local Run
 
@@ -13,12 +13,18 @@ Open:
 
 `http://127.0.0.1:8503`
 
-## Good Deployment Targets
+## Recommended Hosted Deployment
 
-- Render
-- Railway
-- a VPS or VM
-- Docker-based hosting
+Render is the cleanest option for this project because:
+
+- the app is already configured for FastAPI
+- this repo now includes [render.yaml](../render.yaml)
+- the database layer supports Render Postgres directly
+
+Important note:
+
+- Streamlit Cloud is no longer the right deployment target for this project
+- the app is now a FastAPI web app, not a Streamlit app
 
 ## Server Deployment
 
@@ -58,7 +64,29 @@ python -m uvicorn src.web_app:app --host 0.0.0.0 --port 8503
 
 Use Nginx or Caddy if the app is exposed publicly.
 
-## Render or Railway
+## Render Deployment
+
+This repo includes a ready-to-use [render.yaml](../render.yaml) Blueprint.
+
+### What the Blueprint creates
+
+- one Render web service named `smart-expense-analyzer`
+- one Render Postgres database named `smart-expense-analyzer-db`
+- an `APP_DB_URL` environment variable wired automatically from the database connection string
+
+### Deploy steps
+
+1. Open [Render Dashboard](https://dashboard.render.com/)
+2. Click `New +`
+3. Click `Blueprint`
+4. Connect your GitHub repository:
+   `anarghya-Shivanagere/smart-expense-analyzer`
+5. Render will detect [render.yaml](../render.yaml)
+6. Review the resources and click `Apply`
+7. Wait for the database and web service to finish provisioning
+8. Open the generated Render app URL
+
+### Commands used by Render
 
 Build command:
 
@@ -72,14 +100,35 @@ Start command:
 uvicorn src.web_app:app --host 0.0.0.0 --port $PORT
 ```
 
+### Why Postgres is used on Render
+
+Render web services use an ephemeral filesystem by default. That means local SQLite files can be lost on redeploy or restart.
+
+Using Render Postgres avoids that problem and keeps:
+
+- uploaded transactions
+- learned merchant rules
+- anomaly review feedback
+- run summaries
+
+persisted across deploys.
+
+## Railway or Other Hosts
+
+If you deploy outside Render, use the same build/start commands and set one of:
+
+- `APP_DB_URL`
+- `DATABASE_URL`
+
+to a Postgres connection string if you want persistent hosted data.
+
 ## Storage Notes
 
-- SQLite is used by default
+- SQLite is used by default for local development
 - uploaded CSVs are stored under `data/uploads/`
 - run artifacts are stored under `runs/`
 
 For a shared team deployment, consider:
 
-- persistent disk/volume storage
-- a managed Postgres database
+- managed Postgres
 - authentication before exposing the app publicly

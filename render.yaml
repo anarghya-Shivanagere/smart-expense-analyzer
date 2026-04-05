@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: smart-expense-analyzer
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn src.web_app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.11"
+      - key: APP_DB_URL
+        fromDatabase:
+          name: smart-expense-analyzer-db
+          property: connectionString
+
+databases:
+  - name: smart-expense-analyzer-db
+    plan: free
+    region: singapore
+    databaseName: smart_expense_analyzer
+    user: smart_expense_analyzer
