@@ -3,5 +3,7 @@
   "max_steps": 20,
   "tool_timeout_sec": 2,
   "z_threshold": 2.0,
+  "use_local_ml": true,
+  "ml_min_confidence": 0.62,
   "input_csv": "data/sample_transactions.csv"
 }

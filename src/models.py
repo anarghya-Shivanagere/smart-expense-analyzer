@@ -40,6 +40,8 @@ class RunConfig:
     max_steps: int = 20
     tool_timeout_sec: int = 2
     z_threshold: float = 2.0
+    use_local_ml: bool = True
+    ml_min_confidence: float = 0.62
 
 
 @dataclass

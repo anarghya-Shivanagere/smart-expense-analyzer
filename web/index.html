@@ -1,0 +1,127 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart Expense Analyzer</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <div class="hero-copy">
+        <h1>Smart Expense Analyzer</h1>
+        <p class="hero-text">Upload transactions, clean categories, review anomalies, and export analysis artifacts from one workspace.</p>
+      </div>
+      <div class="hero-card">
+        <div class="hero-stat"><span class="stat-label">Upload</span><strong>CSV Transactions</strong></div>
+        <div class="hero-stat"><span class="stat-label">Review</span><strong>Categories & Anomalies</strong></div>
+        <div class="hero-stat"><span class="stat-label">Export</span><strong>Reports & Cleaned Data</strong></div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel controls-panel">
+        <div class="section-heading">
+          <h2>Workspace</h2>
+          <p>Upload data, manage categories, and run analysis without touching the backend logic.</p>
+        </div>
+
+        <div class="controls-grid">
+          <div class="field wide">
+            <label for="upload-input">Upload CSV</label>
+            <div class="upload-box">
+              <input id="upload-input" type="file" accept=".csv">
+              <p>Required columns: <code>date</code>, <code>description</code>, <code>amount</code>. Optional: <code>category</code>.</p>
+              <button id="upload-btn" class="secondary-btn">Import Dataset</button>
+            </div>
+          </div>
+          <div class="field"><label for="dataset-select">Dataset</label><select id="dataset-select"></select></div>
+          <div class="field"><label for="month-select">Month</label><select id="month-select"></select></div>
+          <div class="field"><label for="seed-input">Seed</label><input id="seed-input" type="number" value="42" min="0" step="1"></div>
+          <div class="field action-field"><button id="analyze-btn" class="primary-btn">Analyze Dataset</button></div>
+        </div>
+
+        <div class="status-row">
+          <div id="status-banner" class="status-banner muted">Ready.</div>
+        </div>
+      </section>
+
+      <section id="snapshot-panel" class="snapshot-grid hidden">
+        <article class="metric-card"><span>State</span><strong id="metric-state">-</strong></article>
+        <article class="metric-card"><span>Transactions</span><strong id="metric-transactions">-</strong></article>
+        <article class="metric-card"><span>Anomalies</span><strong id="metric-anomalies">-</strong></article>
+        <article class="metric-card"><span>Total Spend</span><strong id="metric-spend">-</strong></article>
+      </section>
+
+      <section id="results-panel" class="panel hidden">
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="overview">Overview</button>
+          <button class="tab-btn" data-tab="transactions">Transactions</button>
+          <button class="tab-btn" data-tab="anomalies">Anomalies</button>
+          <button class="tab-btn" data-tab="trace">Trace</button>
+        </div>
+
+        <div class="tab-content active" data-panel="overview">
+          <div id="active-filters" class="filter-banner hidden"></div>
+          <div class="analytics-grid">
+            <div class="panel inset analytics-card span-8">
+              <div class="subheading"><h3>Spend by Category</h3><p>Category totals sized to the latest run instead of filling empty space.</p></div>
+              <div class="category-layout">
+                <div id="category-bars" class="bars compact-bars"></div>
+                <div id="category-donut" class="donut-panel"></div>
+              </div>
+            </div>
+            <div class="panel inset analytics-card span-4">
+              <div class="subheading"><h3>Recurring Expenses</h3><p>Repeated merchants detected from the current selection.</p></div>
+              <div id="recurring-list" class="list-stack scroll-list"></div>
+            </div>
+            <div class="panel inset analytics-card span-4">
+              <div class="subheading"><h3>Exports</h3><p>Download cleaned artifacts from the latest run.</p></div>
+              <div id="exports-grid" class="exports-grid"></div>
+            </div>
+            <div class="panel inset analytics-card span-8">
+              <div class="subheading"><h3>Report</h3><p>Structured summary first, raw analyzer report below.</p></div>
+              <div class="report-layout">
+                <div id="report-chips" class="report-chip-grid"></div>
+                <pre id="report-box" class="report-box"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-content" data-panel="transactions">
+          <div class="subheading"><h3>Editable Transactions</h3><p>Adjust categories and save corrections back into the backend memory.</p></div>
+          <div class="transaction-toolbar">
+            <div class="field compact-field">
+              <label for="transactions-category-filter">Category Filter</label>
+              <select id="transactions-category-filter">
+                <option value="All">All Categories</option>
+              </select>
+            </div>
+            <div id="transactions-count" class="table-meta">Showing 0 transactions</div>
+          </div>
+          <div class="table-wrap"><table id="transactions-table"><thead><tr><th>Date</th><th>Description</th><th>Merchant</th><th>Amount</th><th>Category</th><th>Source</th><th>Confidence</th></tr></thead><tbody></tbody></table></div>
+          <div class="actions-row"><button id="save-corrections-btn" class="primary-btn">Save Category Corrections</button></div>
+        </div>
+
+        <div class="tab-content" data-panel="anomalies">
+          <div class="panel inset">
+            <div class="subheading"><h3>Anomaly Review</h3><p>Review each detected or borderline transaction directly in the same row.</p></div>
+            <div class="table-wrap"><table id="anomalies-table"><thead><tr><th>Date</th><th>Description</th><th>Merchant</th><th>Amount</th><th>Category</th><th>Z-Score</th><th>Reason</th><th>Review</th></tr></thead><tbody></tbody></table></div>
+            <div class="actions-row"><button id="save-feedback-btn" class="secondary-btn">Save Anomaly Feedback</button></div>
+          </div>
+        </div>
+
+        <div class="tab-content" data-panel="trace">
+          <div class="overview-grid">
+            <div class="panel inset"><div class="subheading"><h3>State Transitions</h3><p>Pipeline movement through the analyzer state machine.</p></div><div class="table-wrap"><table id="transitions-table"><thead><tr><th>Previous State</th><th>Event</th><th>Next State</th></tr></thead><tbody></tbody></table></div></div>
+            <div class="panel inset"><div class="subheading"><h3>Tool Trace</h3><p>Readable tool call log without raw JSON clutter.</p></div><div class="table-wrap"><table id="trace-table"><thead><tr><th>Timestamp</th><th>Event</th><th>Tool</th><th>Details</th></tr></thead><tbody></tbody></table></div></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

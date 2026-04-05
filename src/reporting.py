@@ -71,9 +71,9 @@ def format_report(
         lines.append(f"- {category:<14} {value:>10.2f}")
 
     lines.append("")
-    lines.append("Baseline Comparison (No-tool baseline):")
-    lines.append(f"- Baseline anomaly count: {baseline_anomaly_count}")
-    lines.append(f"- Agent anomaly count:    {metrics.anomaly_count}")
+    lines.append("Anomaly Count Comparison:")
+    lines.append(f"- Simple threshold reference: {baseline_anomaly_count}")
+    lines.append(f"- Smart analyzer result:      {metrics.anomaly_count}")
 
     if recurring_expenses:
         lines.append("")

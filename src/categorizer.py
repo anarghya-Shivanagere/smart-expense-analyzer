@@ -4,40 +4,11 @@ from __future__ import annotations
 
 import re
 from collections import Counter, defaultdict
-from typing import Dict, Iterable
 
+from .category_definitions import AVAILABLE_CATEGORIES, CATEGORY_KEYWORDS
 from .intelligence import attach_normalized_merchants, normalize_merchant
+from .ml_categorizer import predict_category_with_local_ml
 from .models import Transaction
-
-
-CATEGORY_KEYWORDS: Dict[str, Iterable[str]] = {
-    "Food": (
-        "restaurant", "cafe", "grocery", "groceries", "food", "swiggy", "zomato", "uber eats",
-        "starbucks", "mcdonalds", "bakery", "whole foods", "walmart groceries", "costco bulk groceries",
-        "doordash", "pizza", "subway", "kfc", "coffee", "lunch", "dinner", "snacks",
-    ),
-    "Transport": (
-        "uber", "ola", "lyft", "fuel", "petrol", "diesel", "metro", "bus", "train", "parking",
-        "gas station", "shell", "ticket fine",
-    ),
-    "Utilities": ("electricity", "water", "internet", "wifi", "mobile", "bill"),
-    "Shopping": (
-        "amazon", "flipkart", "mall", "store", "clothing", "electronics", "target", "ikea", "best buy",
-        "furniture", "laptop", "shopping", "duty free", "household",
-    ),
-    "Entertainment": (
-        "movie", "netflix", "spotify", "prime", "hotstar", "game", "youtube premium", "disney+",
-        "cinema", "concert", "ticket",
-    ),
-    "Healthcare": ("pharmacy", "hospital", "clinic", "medical", "doctor", "dentist", "prescription"),
-    "Rent": ("rent", "landlord", "lease"),
-    "Salary": ("salary", "payroll", "income", "credit from employer"),
-    "Travel": ("flight", "airlines", "airline", "hotel", "marriott", "hilton", "airbnb", "airport", "lufthansa", "delta"),
-    "Education": ("course", "udemy", "coursera", "tuition", "textbook", "textbooks", "school", "bookstore"),
-    "Financial": ("interest charge", "service fee", "bank fee", "loan repayment", "atm withdrawal fee", "fee", "insurance premium", "insurance"),
-    "Fitness": ("gym", "membership", "workout", "fitness"),
-}
-AVAILABLE_CATEGORIES: tuple[str, ...] = tuple(CATEGORY_KEYWORDS.keys()) + ("Other",)
 
 
 UNCATEGORIZED_VALUES = {"", "uncategorized", "un-categorized", "unknown", "na", "n/a", "none", "null"}
@@ -101,6 +72,44 @@ def _score_by_training_data(
     return best_category, confidence
 
 
+def _score_by_keywords(description: str) -> tuple[str | None, float]:
+    text = description.lower()
+    best_category: str | None = None
+    best_match_count = 0
+    best_specificity = 0
+
+    for category, keywords in CATEGORY_KEYWORDS.items():
+        matched = [keyword for keyword in keywords if keyword in text]
+        if not matched:
+            continue
+        match_count = len(matched)
+        specificity = max(len(keyword.replace(" ", "")) for keyword in matched)
+        if match_count > best_match_count or (match_count == best_match_count and specificity > best_specificity):
+            best_category = category
+            best_match_count = match_count
+            best_specificity = specificity
+
+    if not best_category:
+        return None, 0.0
+
+    confidence = min(
+        0.94,
+        0.74
+        + min(0.12, (best_match_count - 1) * 0.06)
+        + min(0.06, max(0, best_specificity - 6) * 0.005),
+    )
+    return best_category, confidence
+
+
+def _score_from_memory(remembered: dict[str, object]) -> float:
+    stored_confidence = float(remembered.get("confidence", 0.78))
+    times_seen = max(1, int(remembered.get("times_seen", 1)))
+    source = str(remembered.get("source", "")).lower()
+    repetition_bonus = min(0.08, (times_seen - 1) * 0.015)
+    source_bonus = 0.04 if source in {"manual", "input"} else 0.0
+    return min(0.99, max(0.78, stored_confidence + repetition_bonus + source_bonus))
+
+
 def categorize_transaction(transaction: Transaction) -> Transaction:
     transaction.category = _normalize_category(transaction.category)
     if not _is_uncategorized(transaction.category):
@@ -108,13 +117,12 @@ def categorize_transaction(transaction: Transaction) -> Transaction:
         transaction.category_confidence = max(transaction.category_confidence, 1.0)
         return transaction
 
-    text = transaction.description.lower()
-    for category, keywords in CATEGORY_KEYWORDS.items():
-        if any(keyword in text for keyword in keywords):
-            transaction.category = category
-            transaction.category_source = "rules"
-            transaction.category_confidence = 0.86
-            return transaction
+    category, confidence = _score_by_keywords(transaction.description)
+    if category:
+        transaction.category = category
+        transaction.category_source = "rules"
+        transaction.category_confidence = confidence
+        return transaction
     transaction.category = "Other"
     transaction.category_source = "fallback"
     transaction.category_confidence = 0.35
@@ -124,6 +132,8 @@ def categorize_transaction(transaction: Transaction) -> Transaction:
 def categorize_transactions(
     transactions: list[Transaction],
     merchant_memory: dict[str, dict[str, object]] | None = None,
+    use_local_ml: bool = True,
+    ml_min_confidence: float = 0.62,
 ) -> list[Transaction]:
     attach_normalized_merchants(transactions)
     exact_matches, category_tokens = _build_training_signals(transactions)
@@ -143,7 +153,7 @@ def categorize_transactions(
         if remembered and str(remembered.get("category", "")).strip():
             txn.category = _normalize_category(str(remembered["category"]))
             txn.category_source = "memory"
-            txn.category_confidence = max(0.78, float(remembered.get("confidence", 0.78)))
+            txn.category_confidence = _score_from_memory(remembered)
             categorized.append(txn)
             continue
 
@@ -153,7 +163,16 @@ def categorize_transactions(
             txn.category_source = "learned"
             txn.category_confidence = confidence
         else:
-            categorize_transaction(txn)
+            if use_local_ml:
+                ml_category, ml_confidence = predict_category_with_local_ml(txn, transactions, memory)
+                if ml_category and ml_confidence >= ml_min_confidence:
+                    txn.category = _normalize_category(ml_category)
+                    txn.category_source = "ml"
+                    txn.category_confidence = ml_confidence
+                else:
+                    categorize_transaction(txn)
+            else:
+                categorize_transaction(txn)
         categorized.append(txn)
 
     return categorized

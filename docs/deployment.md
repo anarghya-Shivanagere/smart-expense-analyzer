@@ -1,102 +1,85 @@
 # Deployment Guide
 
-This project is a Streamlit application, so the simplest deployment targets are:
+This app uses a FastAPI backend, a custom static frontend, local file-based artifacts, and SQLite by default.
 
-- Streamlit Community Cloud
-- a VM or cloud server running Python
-- Docker on any hosting platform
+## Quick Local Run
 
-## Option 1: Streamlit Community Cloud
-
-Best for a quick demo deployment.
-
-### Steps
-
-1. Push the repo to GitHub
-2. Go to [https://share.streamlit.io](https://share.streamlit.io)
-3. Click `New app`
-4. Select this repository:
-   - `anarghya-Shivanagere/smart-expense-analyzer`
-5. Set the main file path to:
-
-```text
-src/ui_app.py
+```powershell
+python -m pip install -r requirements.txt
+python -m uvicorn src.web_app:app --reload --host 127.0.0.1 --port 8503
 ```
 
-6. Deploy
+Open:
 
-### Notes
+`http://127.0.0.1:8503`
 
-- Make sure all required Python dependencies are installed in the deployment environment
-- If you want smoother deployment later, add a `requirements.txt`
+## Good Deployment Targets
 
-## Option 2: Run on a Server
+- Render
+- Railway
+- a VPS or VM
+- Docker-based hosting
 
-### Steps
+## Server Deployment
 
-1. Clone the repo
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/anarghya-Shivanagere/smart-expense-analyzer.git
 cd smart-expense-analyzer
 ```
 
-2. Create a virtual environment
+### 2. Create and activate a virtual environment
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 ```
 
-On Windows:
+Windows PowerShell:
 
 ```powershell
 .venv\Scripts\Activate.ps1
 ```
 
-3. Install dependencies
+### 3. Install dependencies
 
 ```bash
-python -m pip install streamlit selenium
+python -m pip install -r requirements.txt
 ```
 
-4. Run Streamlit
+### 4. Start the app
 
 ```bash
-python -m streamlit run src/ui_app.py --server.address 0.0.0.0 --server.port 8503
+python -m uvicorn src.web_app:app --host 0.0.0.0 --port 8503
 ```
 
-5. Expose port `8503` through your firewall or reverse proxy
+### 5. Put a reverse proxy in front
 
-## Option 3: Docker
+Use Nginx or Caddy if the app is exposed publicly.
 
-You can containerize the app for deployment on:
+## Render or Railway
 
-- Render
-- Railway
-- Azure
-- AWS
-- GCP
-- DigitalOcean
+Build command:
 
-Suggested future additions:
+```text
+pip install -r requirements.txt
+```
 
-- `requirements.txt`
-- `Dockerfile`
-- optional `Procfile`
+Start command:
 
-## Environment Notes
+```text
+uvicorn src.web_app:app --host 0.0.0.0 --port $PORT
+```
 
-- The app uses local SQLite by default
-- Uploaded CSVs and run artifacts are stored locally unless you change storage behavior
-- For shared/team deployment, consider:
-  - persistent volume storage
-  - database-backed storage
-  - authentication if exposing publicly
+## Storage Notes
 
-## Recommended Next Deployment Improvements
+- SQLite is used by default
+- uploaded CSVs are stored under `data/uploads/`
+- run artifacts are stored under `runs/`
 
-1. Add `requirements.txt`
-2. Add `Dockerfile`
-3. Add environment variable documentation
-4. Move run artifacts to durable storage for hosted environments
+For a shared team deployment, consider:
+
+- persistent disk/volume storage
+- a managed Postgres database
+- authentication before exposing the app publicly

@@ -1,6 +1,20 @@
 # Smart Expense Analyzer
 
-Smart Expense Analyzer is a Streamlit app for uploading transaction CSVs, auto-categorizing uncategorized rows, detecting anomalies, spotting recurring expenses, and exporting cleaned analysis artifacts.
+Smart Expense Analyzer is a Python expense analysis app with a FastAPI backend and a custom web frontend. It helps teams upload bank or card CSVs, categorize transactions, review anomalies, spot recurring spend, and export cleaned outputs from one place.
+
+## What It Does
+
+- Upload CSV files with `date`, `description`, `amount`, and optional `category`
+- Auto-categorize uncategorized rows using:
+  - CSV-provided categories
+  - learned merchant matches from earlier runs
+  - similarity matching inside the current dataset
+  - a lightweight local ML classifier
+  - keyword rules
+- Detect statistical anomalies with category-aware scoring
+- Surface recurring expenses and likely subscriptions
+- Save category corrections and anomaly review feedback
+- Export categorized data, summaries, anomaly files, and reports
 
 ## Screenshots
 
@@ -12,84 +26,55 @@ Smart Expense Analyzer is a Streamlit app for uploading transaction CSVs, auto-c
 
 ![Results UI](docs/screenshots/ui-results.png)
 
-## Features
-
-- Upload CSV transaction files with `date`, `description`, `amount`, and optional `category`
-- Auto-categorize uncategorized rows using:
-  - existing input categories
-  - merchant memory from previous uploads
-  - within-file learning
-  - keyword rules
-- Detect anomalies with category-aware statistical scoring
-- Review recurring expenses
-- Collect anomaly feedback from users
-- Edit categories in the UI and save corrections
-- Add custom categories
-- Export:
-  - categorized CSV
-  - merchant summary CSV
-  - anomalies CSV
-  - summary JSON
-  - report text
-  - run logs
-
-## How It Works
-
-### Categorization
-
-Transactions are categorized in layers:
-
-1. Keep the category from the CSV if one already exists
-2. Normalize the merchant name from the description
-3. Reuse saved merchant memory from previous runs
-4. Learn from labeled rows in the same upload
-5. Apply rule-based keyword mapping
-6. Fall back to `Other`
-
-Main files:
-
-- `src/categorizer.py`
-- `src/intelligence.py`
-- `src/database.py`
-
-### Anomaly Detection
-
-Anomalies are detected statistically using transaction amounts:
-
-1. Detect whether the dataset uses positive or negative expense values
-2. Build a spend baseline
-3. Compare each transaction against:
-   - its category baseline when enough category data exists
-   - otherwise the global dataset baseline
-4. Flag rows whose z-score is above the configured threshold
-
-Main file:
-
-- `src/anomaly_detector.py`
-
 ## Architecture
 
-See [docs/architecture.md](docs/architecture.md).
+The project keeps the analysis engine in Python and serves a custom web UI through FastAPI.
+
+Main flow:
+
+1. Upload a CSV
+2. Import transactions into the local database
+3. Run categorization
+4. Run anomaly detection
+5. Generate metrics and report artifacts
+6. Review results in the frontend
 
 State machine:
 
 `INIT -> DATA_LOADED -> CATEGORIZED -> ANOMALIES_DETECTED -> REPORTED`
+
+More detail: [docs/architecture.md](docs/architecture.md)
 
 ## Project Structure
 
 ```text
 src/
   agent.py
-  categorizer.py
   anomaly_detector.py
-  intelligence.py
+  categorizer.py
   database.py
+  intelligence.py
   reporting.py
-  ui_app.py
+  web_app.py
+web/
+  index.html
+  static/
+    app.js
+    styles.css
 tests/
-data/
 docs/
+data/
 ```
+
+## Key Files
+
+- [src/web_app.py](src/web_app.py): FastAPI app and API routes
+- [web/static/app.js](web/static/app.js): frontend interaction logic
+- [web/static/styles.css](web/static/styles.css): UI styling
+- [src/categorizer.py](src/categorizer.py): categorization pipeline
+- [src/anomaly_detector.py](src/anomaly_detector.py): anomaly detection
+- [src/database.py](src/database.py): persistence and merchant memory
+- [src/agent.py](src/agent.py): orchestration and artifact generation
 
 ## Local Setup
 
@@ -102,63 +87,75 @@ python -m venv .venv
 
 ### 2. Install dependencies
 
-If you do not already have the required packages:
-
 ```powershell
-python -m pip install streamlit selenium
+python -m pip install -r requirements.txt
 ```
 
-Depending on your environment, you may also need any packages already used by the project such as database or plotting dependencies.
-
-### 3. Run the app
+### 3. Run the web app
 
 ```powershell
-python -m streamlit run src/ui_app.py --server.address 127.0.0.1 --server.port 8503
+python -m uvicorn src.web_app:app --reload --host 127.0.0.1 --port 8503
 ```
 
 Open:
 
 `http://127.0.0.1:8503`
 
-## CLI Usage
+## CLI and Testing
 
-Run the sample workflow:
+Run the sample CLI workflow:
 
 ```powershell
 python -m src.main
 ```
 
-Run tests:
+Run all tests:
 
 ```powershell
 python -m unittest discover -s tests -v
 ```
 
-Run evaluation:
+Run a single test module:
+
+```powershell
+python -m unittest tests.test_categorizer -v
+```
+
+Run evaluation scenarios:
 
 ```powershell
 python -c "from src.evaluation import run_evaluation; print(run_evaluation(seed=42, scenario_count=10))"
 ```
 
+## Outputs
+
+Each run can write artifacts into `runs/`, including:
+
+- categorized CSV
+- merchant summary CSV
+- anomalies CSV
+- summary JSON
+- report text
+- JSONL observability log
+
+## Categorization Pipeline
+
+The app now uses a layered categorization pipeline:
+
+- deterministic signals first:
+  - CSV input
+  - learned merchant matches
+  - similarity matching
+- local ML next:
+  - a lightweight seeded naive Bayes classifier
+- keyword rules and fallback last:
+  - rules catch common merchants and patterns
+  - fallback keeps unclear rows reviewable instead of silently overconfident
+
 ## Deployment
 
-A deployment guide is available here:
+Deployment instructions are in [docs/deployment.md](docs/deployment.md).
 
-[docs/deployment.md](docs/deployment.md)
-
-## Generated Artifacts
-
-Each run can generate files in `runs/`, including:
-
-- `*_categorized.csv`
-- `*_merchant_summary.csv`
-- `*_anomalies.csv`
-- `*_summary.json`
-- `*_report.txt`
-- `*.jsonl` observability logs
-
-## Repo
-
-GitHub repository:
+## Repository
 
 [https://github.com/anarghya-Shivanagere/smart-expense-analyzer](https://github.com/anarghya-Shivanagere/smart-expense-analyzer)

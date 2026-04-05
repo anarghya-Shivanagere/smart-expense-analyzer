@@ -147,6 +147,8 @@ class SmartExpenseAgent:
                 self.config.tool_timeout_sec,
                 transactions,
                 merchant_memory or {},
+                self.config.use_local_ml,
+                self.config.ml_min_confidence,
             )
             validate_categorized_output(categorized)
             logger.log("tool_result", {"tool": "categorizer", "output_size": len(categorized)})
@@ -269,4 +271,6 @@ def load_config(path: Path) -> RunConfig:
         max_steps=int(cfg.get("max_steps", 20)),
         tool_timeout_sec=int(cfg.get("tool_timeout_sec", 2)),
         z_threshold=float(cfg.get("z_threshold", 2.0)),
+        use_local_ml=bool(cfg.get("use_local_ml", True)),
+        ml_min_confidence=float(cfg.get("ml_min_confidence", 0.62)),
     )
