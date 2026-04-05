@@ -26,6 +26,35 @@ Important note:
 - Streamlit Cloud is no longer the right deployment target for this project
 - the app is now a FastAPI web app, not a Streamlit app
 
+## Free Public Link Option
+
+If you want a free shareable link, use a Hugging Face Docker Space.
+
+Why this is the best free fit:
+
+- Docker Spaces support FastAPI apps directly
+- you get a public hosted link
+- the repo now includes [Dockerfile](../Dockerfile)
+
+Important limitation:
+
+- Hugging Face Spaces free storage is ephemeral
+- uploaded CSVs, SQLite data, and generated artifacts can reset when the Space restarts or rebuilds
+
+### Hugging Face Space setup
+
+1. Create an account at [Hugging Face](https://huggingface.co/)
+2. Click `New Space`
+3. Choose:
+   - SDK: `Docker`
+   - Visibility: `Public`
+4. Create the Space
+5. Add the files from this repo to the Space repository
+6. Replace the Space `README.md` with [docs/hf-space-readme.md](hf-space-readme.md)
+7. Let the Space build
+
+The app will start on port `7860` automatically from [Dockerfile](../Dockerfile).
+
 ## Server Deployment
 
 ### 1. Clone the repository

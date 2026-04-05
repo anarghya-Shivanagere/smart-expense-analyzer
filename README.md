@@ -158,6 +158,8 @@ Deployment instructions are in [docs/deployment.md](docs/deployment.md).
 
 For Render, this repo now includes [render.yaml](render.yaml) so you can deploy it as a Blueprint with a connected Postgres database.
 
+For a free public link, the easiest path is a Hugging Face Docker Space using [Dockerfile](Dockerfile). A ready Space README template is in [docs/hf-space-readme.md](docs/hf-space-readme.md).
+
 ## Repository
 
 [https://github.com/anarghya-Shivanagere/smart-expense-analyzer](https://github.com/anarghya-Shivanagere/smart-expense-analyzer)
